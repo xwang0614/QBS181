@@ -1,0 +1,166 @@
+---
+title: "Netflix daily change"
+author: "Xinyu Wang"
+date: "11/6/2021"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+portfolio_daily <- read.csv("portfolio_daily_ret.csv",header=TRUE)
+```
+
+```{r}
+Netflix_daily <- portfolio_daily[which(portfolio_daily$symbol=="NFLX"),]
+```
+
+```{r}
+Netflix_daily_change <- data.frame(Netflix_daily[which(abs(Netflix_daily$returns)>0.08),])
+Netflix_daily_change
+```
+
+```{r}
+write.csv(Netflix_daily_change,"Netflix_daily_change.csv",row.names = FALSE)
+```
+
+```{r}
+News <- read.csv("Netflix Daily News.csv",header = TRUE)
+News <- News[c(1:20),c(1:5)]
+```
+
+```{r}
+library(stringr)
+(str_count(News$News))
+```
+
+```{r}
+library(tidyverse)
+News_information <-News %>% 
+  dplyr::select(News) %>% 
+  mutate_all(funs(str_replace_na(.,"")))
+```
+```{r}
+NewsSub <- News_information %>% mutate(response=1:length(News_information$News))
+```
+
+```{r}
+library(tidytext)
+library(magrittr)
+NewsSub %<>% 
+  unnest_tokens(word, News)
+```
+
+```{r}
+data(stop_words)
+NewsSub <- NewsSub %>%
+  anti_join(stop_words)
+```
+
+```{r}
+NewsSub %>%
+  count(word, sort = TRUE) 
+```
+
+```{r}
+NewsSub %>%
+  count(word, sort = TRUE) %>%
+  filter(n > 2) %>%
+  mutate(word = reorder(word, n)) %>%
+  ggplot(aes(n, word)) +
+  geom_col() +
+  labs(y = NULL) + theme_minimal()
+```
+
+Increase:
+
+```{r}
+News_increase <- News[which(News$returns>0),]
+```
+
+```{r}
+News_increase <-News_increase %>% 
+  dplyr::select(News) %>% 
+  mutate_all(funs(str_replace_na(.,"")))
+```
+
+```{r}
+IncreaseSub <- News_increase %>% mutate(response=1:length(News_increase$News))
+```
+
+```{r}
+IncreaseSub %<>% 
+  unnest_tokens(word, News)
+```
+
+```{r}
+IncreaseSub <- IncreaseSub %>%
+  anti_join(stop_words)
+```
+
+```{r}
+IncreaseSub %>%
+  count(word, sort = TRUE) 
+```
+
+```{r}
+IncreaseSub %>%
+  count(word, sort = TRUE) %>%
+  filter(n > 2) %>%
+  mutate(word = reorder(word, n)) %>%
+  ggplot(aes(n, word)) +
+  geom_col() +
+  labs(y = NULL) + theme_minimal()
+```
+
+Decrease:
+
+```{r}
+News_decrease <- News[which(News$returns<0),]
+```
+
+```{r}
+News_decrease <-News_decrease %>% 
+  dplyr::select(News) %>% 
+  mutate_all(funs(str_replace_na(.,"")))
+```
+
+```{r}
+DecreaseSub <- News_decrease %>% mutate(response=1:length(News_decrease$News))
+```
+
+```{r}
+DecreaseSub %<>% 
+  unnest_tokens(word, News)
+```
+
+```{r}
+DecreaseSub <- DecreaseSub %>%
+  anti_join(stop_words)
+```
+
+```{r}
+DecreaseSub %>%
+  count(word, sort = TRUE) 
+```
+
+```{r}
+DecreaseSub %>%
+  count(word, sort = TRUE) %>%
+  filter(n > 2) %>%
+  mutate(word = reorder(word, n)) %>%
+  ggplot(aes(n, word)) +
+  geom_col() +
+  labs(y = NULL) + theme_minimal()
+```
+
+
+
+
+
+
+
+
+
