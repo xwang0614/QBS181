@@ -1,0 +1,250 @@
+---
+title: "Netflix daily change"
+author: "Xinyu Wang"
+date: "11/6/2021"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidytext)
+library(magrittr)
+library(dplyr)
+library(tidyverse)
+library(stringr)
+```
+
+## News analysis based on daily rise and fall
+
+### Getting the data of Netflix daily returns
+
+We have a file including daily returns for all five stocks and we use Netflix as an example to show the relationship between news keywords and stock price. 
+Now, we select Netflix data as a new data set. 
+
+```{r}
+portfolio_daily <- read.csv("portfolio_daily_ret.csv",header=TRUE)
+```
+
+```{r}
+# Select Netflix data
+Netflix_daily <- portfolio_daily[which(portfolio_daily$symbol=="NFLX"),]
+```
+
+Then we use which() function to get Netflix data which daily rise or fall of more than 8% and save them as a new csv file.
+
+```{r}
+# Select Netflix data with daily increase or decrease of more than 8%
+Netflix_daily_change <- data.frame(Netflix_daily[which(abs(Netflix_daily$returns)>0.08),])
+Netflix_daily_change
+```
+
+```{r}
+# Save the data as a new csv file
+write.csv(Netflix_daily_change,"Netflix_daily_change.csv",row.names = FALSE)
+```
+
+### Show the frequcency of words in news
+
+We use Excel to add a new column "News" and search for relational news by the date to fill in the new column. Then save it as a new csv file and load into R. Delete empty rows and columns.
+
+```{r}
+# Load new data set and delete empty rows/columns 
+News <- read.csv("Netflix Daily News.csv",header = TRUE)
+News <- News[c(1:20),c(1:5)]
+```
+
+First, we use the stringr package in R and get the number of characters in the text column "News".
+Then we use pattern matching to find spaces and count the number of words in the text column. 
+
+It is noteworthy that we need to add one at pattern part, since the first word will always be omitted as it is not carried out by spaces.
+
+```{r}
+# Show the number of words in the News column
+(str_count(News$News))
+(str_count(News$News,pattern=" ")+1) 
+#the one is necessary because the first word will always be missed as it's not proceeded by a space
+```
+
+Next, we use tidyverse package and create a new cleaning data which just include the News column.
+
+```{r}
+# Get the cleaning News column as a new data set
+News_information <-News %>% 
+  dplyr::select(News) %>% 
+  mutate_all(funs(str_replace_na(.,"")))
+News_information
+```
+Then we get "NewsSub" by mutate() function which can add new variables response by filling from 1 to the length of "News" and preserve existing News column.
+
+```{r}
+(NewsSub <- News_information %>% mutate(response=1:length(News_information$News)))
+```
+
+Next step, we split the column "News" into tokens by unnest_tokens() function.
+
+```{r}
+# Split News into tokens
+NewsSub %<>% 
+  unnest_tokens(word, News)
+NewsSub
+```
+
+Now we can see that the data is displayed as one-word-per-row format. 
+
+The other thing we need to notice is stop words. Usually, some words appear frequently, but they provide little information and can not help analysis. Like "is", "it", "the", "a","of","to", etc., these are called stop words, and we need to remove them from the analysis by anti_join() function.
+
+```{r}
+# Load data of stop words
+data(stop_words)
+# Remove stop words
+NewsSub <- NewsSub %>%
+  anti_join(stop_words)
+NewsSub
+```
+
+Now, we can use the count() function from dplyr to find the number of occurrences of each word and most represented words from the "News" column.
+
+```{r}
+NewsSub %>%
+  dplyr::count(word,sort = TRUE)
+```
+
+From the above output, we find that "releases" and "subscribers" these two words appear most frequently except "netflix" (Since Netflix is the company name of our data, we can just ignore it).
+
+For more intuitive observation, we display a plot to show words that appear more than twice.
+
+```{r}
+# Select rows with more than 2 occurrences of words and get a plot
+NewsSub %>%
+  dplyr::count(word, sort = TRUE) %>%
+  filter(n > 2) %>%
+  mutate(word = reorder(word, n)) %>%
+  ggplot(aes(n, word)) +
+  geom_col() +
+  labs(y = NULL) + theme_minimal()
+```
+
+Based on the above plot, we find that "netflix" as the company name has highest frequency. Next, "subscribers" and "releases" appear more times. These two words, the former represents the number of subscriptions of the video website, which is closely related to profits and stock prices, and the latter represents the launch of new movies or dramas, which is a representative word of the video website products. So, they are reasonable to have a high frequency.
+
+Besides, "pandemic", "stock", "quarter", "dow", "earning", etc., they all appear more than twice and show some general rule. Netflix stock price will change with the social environment and the stock market environment, so pandemic and stock indexes (Dow Jones index) will become news keywords. In addition, stock price reflects the operating conditions of the company, so the financial report (quarter earning report) is highly related to the stock price.
+
+Overall, in the above analysis, we use Netflix as the example to prove the relationship between the daily rise and fall of stock price and news. To a certain extent, we can predict the feasibility of stock changes by comparing some key words of the news.
+
+To better illustrate the impact of news keywords on stock price, we could do the same analysis on daily rise data and daily fall data respectively.
+
+## Analysis on daily rise data
+
+Like we do for the whole data, we repeat the same steps to get the number of occurrences of each word and find words with high correlation with the rise of stock price.
+
+```{r}
+# Select the daily rise data form the News data set
+News_increase <- News[which(News$returns>0),]
+```
+
+```{r}
+News_increase <-News_increase %>% 
+  dplyr::select(News) %>% 
+  mutate_all(funs(str_replace_na(.,"")))
+News_increas
+```
+
+```{r}
+(IncreaseSub <- News_increase %>% mutate(response=1:length(News_increase$News)))
+```
+
+```{r}
+# Split column to unnest tokens
+IncreaseSub %<>% 
+  unnest_tokens(word, News)
+IncreaseSub
+```
+
+```{r}
+# Remove stop words
+IncreaseSub <- IncreaseSub %>%
+  anti_join(stop_words)
+IncreaseSub
+```
+
+```{r}
+# Count the number of occurences of each word
+IncreaseSub %>%
+  dplyr::count(word, sort = TRUE) 
+IncreaseSub
+```
+
+```{r}
+# Show rows with more than one occurrence of words and get a plot
+IncreaseSub %>%
+  dplyr::count(word, sort = TRUE) %>%
+  filter(n > 1) %>%
+  mutate(word = reorder(word, n)) %>%
+  ggplot(aes(n, word)) +
+  geom_col() +
+  labs(y = NULL) + theme_minimal()
+```
+
+The above outputs show that "subscribers", "quarter", "stock", "earnings", etc. are more likely to give a positive impact on stock price. Besides, "nasdaq", "dow" and "index" are also positively correlated with the daily rise of stock price.
+
+
+## Analysis on daily fall data
+
+Do the same steps as the daily rise data and get words with high correlation with the fall of stock price.
+
+```{r}
+# Select the daily rise data form the News data set
+News_decrease <- News[which(News$returns<0),]
+```
+
+```{r}
+News_decrease <-News_decrease %>% 
+  dplyr::select(News) %>% 
+  mutate_all(funs(str_replace_na(.,"")))
+News_decrease
+```
+
+```{r}
+(DecreaseSub <- News_decrease %>% mutate(response=1:length(News_decrease$News)))
+```
+
+```{r}
+# Split column to unnest tokens
+DecreaseSub %<>% 
+  unnest_tokens(word, News)
+DecreaseSub
+```
+
+```{r}
+# Remove stop words
+DecreaseSub <- DecreaseSub %>%
+  anti_join(stop_words)
+DecreaseSub
+```
+
+```{r}
+# Count the number of occurences of each word
+DecreaseSub %>%
+  dplyr::count(word, sort = TRUE) 
+DecreaseSub
+```
+
+```{r}
+# Show rows with more than one occurrence of words and get a plot
+DecreaseSub %>%
+  dplyr::count(word, sort = TRUE) %>%
+  filter(n > 1) %>%
+  mutate(word = reorder(word, n)) %>%
+  ggplot(aes(n, word)) +
+  geom_col() +
+  labs(y = NULL) + theme_minimal()
+```
+
+The above outputs show that "pandemic", "releases", "coronavirus", "price", etc. are more likely to give a negative impact on stock price. 
+
+If we want to get more accurate news keywords and better predict the rise and fall, we can collect more news data for the above analysis. For different stocks, the above keywords have certain generality, but they do not necessarily represent accuracy.
+
+
+
+
+
+
