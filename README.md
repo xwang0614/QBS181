@@ -59,6 +59,18 @@ library(devtools)
 library(QBS181momentum)
 
 ## installation
+To install R
+
+step1:Go to https://cran.r-project.org
+
+step2:Click on the Download R. ( You have to selected your computer version)
+
+step3:Click on the base subdirectory link or install R for the first time link.
+
+step4:Click Download R X.X.X for Windows (X.X.X stand for the latest version of R. eg: 3.6.1) and save the executable .exe file.
+
+step5:Run the .exe file and follow the installation instructions.
+
 To install all of the packages above except library(QBS181momentum) and library(SIT). You can use the code below and just add the library name which you want into the ().
 >install.packages() 
 
