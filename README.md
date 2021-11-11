@@ -82,9 +82,13 @@ For the library(QBS181momentum). PLease install packages "STI" and "devtools" fi
 
 
 >library('devtools')
+>
 >install_github('xwang0614/QBS181/QBS181momentum')
+>
 >library('QBS181momentum')
+>
 >library('SIT')
+>
 >momentumQBS181('AAPL,GOOGL,NFLX,SQ,TSLA','2016-01-01','2021-10-01')
 
 ## contact
