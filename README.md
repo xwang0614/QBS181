@@ -58,7 +58,9 @@ library(timetk)
 library(QBS181momentum)
 
 ## installation
-You can use the "install.packages()" to install all of the packages above except library(QBS181momentum) and library(SIT) to install the library. Just add the library name into the ().
+You can use the 
+>install.packages() 
+to install all of the packages above except library(QBS181momentum) and library(SIT) to install the library. Just add the library name into the ().
 
 For the library(STI). Install Systematic Investor Toolbox (SIT) package. From following URL : 'github.com/systematicinvestor/SIT'
 
