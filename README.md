@@ -63,7 +63,7 @@ library(QBS181momentum)
 To install all of the packages above except library(QBS181momentum) and library(SIT). You can use the code below and just add the library name which you want into the ().
 >install.packages() 
 
-for example
+For example
 
 >install.package('ggplot2')
 
@@ -71,7 +71,7 @@ for example
 For the library(STI). Install Systematic Investor Toolbox (SIT) package. From following URL : 'github.com/systematicinvestor/SIT'
 
 
-please first install SIT.date, use the folliowing code:
+Please first install SIT.date, use the folliowing code:
 
 >devtools::install_github('systematicinvestor/SIT.date')
  
