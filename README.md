@@ -55,6 +55,8 @@ library(tidyquant)
 
 library(timetk)
 
+library(devtools)
+
 library(QBS181momentum)
 
 ## installation
@@ -75,6 +77,16 @@ please first install SIT.date, use the folliowing code:
 >curl_download('https://github.com/systematicinvestor/SIT/raw/master/SIT.tar.gz', 'sit',mode = 'wb',quiet=T)
 
 >install.packages('sit', repos = NULL, type='source')
+
+For the library(QBS181momentum). PLease install packages "STI" and "devtools" first and then use the following code to install package"QBS181moentum"
+
+
+>library('devtools')
+>install_github('xwang0614/QBS181/QBS181momentum')
+>library('QBS181momentum')
+>library('SIT')
+>momentumQBS181('AAPL,GOOGL,NFLX,SQ,TSLA','2016-01-01','2021-10-01')
+
 ## contact
 ruce.shao.gr@dartmouth.edu
 
