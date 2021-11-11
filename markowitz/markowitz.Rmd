@@ -1,0 +1,118 @@
+---
+title: "Markowitz Theory Analysis Doc"
+author: "Ruce Shao"
+date: "11/7/2021"
+output:
+  html_document:
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(zoo)
+library(xts)
+library(TTR)
+library(quantmod)
+library(PerformanceAnalytics)
+library(fPortfolio)
+```
+
+## Use Markowitz Mean-Variance Model to optimize my investment portfolio
+```{r}
+#get the historical price data from yahoo finance
+getSymbols(c("AAPL", "GOOGL", "NFLX", "SQ", "TSLA"),from = "2016-01-01",to = "2021-10-01")
+
+#get the daily return for each stock
+AAPL_ret <- dailyReturn(AAPL)
+GOOGL_ret <- dailyReturn(GOOGL)
+NFLX_ret <- dailyReturn(NFLX)
+SQ_ret <- dailyReturn(SQ)
+TSLA_ret <- dailyReturn(TSLA)
+
+#merge daily returns together and do the correlation analysis
+dailyreturn.data <- merge(AAPL_ret, GOOGL_ret, NFLX_ret, SQ_ret, TSLA_ret)
+colnames(dailyreturn.data) <- c("AAPL","GOOGL","NFLX","SQ","TSLA")
+
+#get the correlation chart of stocks in our portfolio
+chart.Correlation(dailyreturn.data)
+```
+What we want to do is to first check the historical daily returns of each stock in our portfolio and what their correlations are. There is a very basic principle involved here, the correlation between the returns of each stock in the portfolio should be as low as possible, because if the correlation between the returns of two stocks is high, then there is no need for us to buy two stocks, we can get the same return by buying one of them.
+```{r}
+#function of plotting effective frontier
+efficient.frontier <- function(return){
+  covariance <- cov(return) 
+  ret <- colMeans(return)
+  covariance1 <- rbind(covariance,rep(1,5),ret)
+  covariance1 <- cbind(covariance1,rbind(t(tail(covariance1,2)),matrix(0,2,2))) 
+  rbase <- seq(min(ret),max(ret),length=100) 
+  s <- sapply(rbase,function(x){  
+    y <-head(solve(covariance1,c(rep(0,5),1,x)),5)
+    y %*% covariance %*% y
+  })  
+  plot(s,rbase) 
+}
+#plot the return and covariance
+efficient.frontier(dailyreturn.data)
+```
+This is a draft of our return vs. covariance plot and we can optimize this graph with fPortfolio library to form the effective frontier we need.  
+
+```{r,warning=FALSE,message=FALSE}
+#use the existing library fPortfolio and do the analysis on effective frontier
+library(fPortfolio)
+merged.daily.return <- as.timeSeries(dailyreturn.data)
+
+#Get the summary of effective frontier
+Efficient.Frontier <- portfolioFrontier(merged.daily.return)
+Efficient.Frontier
+#Plot the efficient frontier
+#Different selections provide different plots:
+#1.Plot Efficient Frontier
+#2.Add Minimum Risk Portfolio
+#3.Add Risk/Return of Single Assets
+#4.Add Equal Weights Portfolio
+#5.Add Two Asset Frontiers [LongOnly Only]
+#6.Add Monte Carlo Portfolios
+#7.Add Sharpe Ratio [Markowitz PF Only]
+plot(Efficient.Frontier)
+```
+Here is a brief introduction to Markowitz portfolio theory and the efficient frontier. The basic assumptions of Markowitz portfolio theory are: 
+(1) Single-period investment, as an approximate description of reality in a simplified model, is mainly expressed as an investor investing at the beginning of the period and receiving a return at the end of the period.
+(2) Prior knowledge of the probability distribution of investment returns and the conditions under which the returns satisfy a normal distribution.
+(3) Investors measure the uncertainty of returns (i.e., risk) and select a portfolio based on the expectation and variance of returns.
+(4) Investors follow the principle of predominance to avoid risk and pursue the maximum expected utility, i.e., they choose the higher rate of return for the same risk and the lower risk for the same level of return.
+After knowing the basic assumptions of Markowitz's portfolio theory, the efficient frontier is better explained. The efficient frontier can be basically understood as the optimal return that a portfolio can achieve under a particular risk. The x-axis of this graph is Mean-Var Target Risk and the y-axis is Target Return, because we use daily return data, so the y-axis also reflects the daily return.
+
+```{r}
+#Select 1 and 7
+plot(Efficient.Frontier)
+```
+This graph shows the distribution of rewards versus risks obtained after Monte Carlo simulation. We can clearly see that for a given risk, our return is not likely to exceed the efficient frontier. This graph also supports the reasoning that if we need to maximize our return, our return/risk ratio should be on the efficient frontier.
+
+How do you relate the points of the efficient frontier to the composition of the portfolio?
+Here is the weights plot for different Mean-Var target risk and target return.
+```{r}
+#get the weights plot for our portfolio
+weightsPlot(Efficient.Frontier)
+```
+
+If I am a more conservative investor and I only want to get the maximum possible return with the minimum risk, how should I choose the weights of my positions in my portfolio?
+```{r}
+#Select 1 and 2
+plot(Efficient.Frontier)
+```
+The red dots in the graph are the returns and risks I can obtain.
+```{r}
+minriskPortfolio(merged.daily.return, spec = portfolioSpec(), constraints = "LongOnly")
+```
+If we want to get the lowest risk return, the portfolio weighting should be 29.30% of Apple, 61.88% of Google, 8.09% of Netflix and 0.73% of Tesla. And this is exactly showed as the thickened line at weights plot.
+
+If we are looking for the highest return/risk ratio, we need to do a combined analysis with the Sharpe ratio. The Sharpe ratio is simply the additional return per unit of risk taken by the investor. At the intersection of the efficient frontier and the Sharpe ratio curve, we get the highest return/risk ratio for that portfolio.
+```{r}
+#Select 1, 2, 3 and 8
+plot(Efficient.Frontier)
+```
+The weights of portfolio is:
+```{r}
+tangencyPortfolio(merged.daily.return, spec = portfolioSpec(), constraints = "LongOnly")
+```
+If we want to get the highest return/risk ratio in our portfolio, the portfolio weighting should be 34.59% of Apple, 14.71% of Netflix, 26.82% of Square, and 23.87% of Tesla.

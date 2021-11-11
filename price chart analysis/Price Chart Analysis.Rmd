@@ -1,0 +1,132 @@
+---
+title: "Price Chart Analysis Doc"
+author: "Ruce Shao"
+date: "10/31/2021"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(ggplot2)
+library(tidyquant)
+library(timetk)
+library(tidyverse)
+```
+
+## Analysis for each stock of our stock portfolio and optimize the portfolio
+
+### Getting the data of stock price and visualize them.
+
+We have Netflix, Apple, Google, Tesla and Square in our stock portfolio and the historical stock price of each stock in our investment portfolio.
+```{r,include=FALSE}
+stocks <- c("NFLX", "GOOGL", "AAPL", "TSLA", "SQ")
+portfolio <- tq_get(stocks,from = "2016-01-01",to = "2021-10-01",get = "stock.prices")
+
+```
+Now we can make a price graph for each stock's adjusted closing price:
+```{r}
+ 
+ggplot(data = portfolio)+
+  (mapping=aes(x = date, y = adjusted, color = symbol)) +
+  geom_line() +
+  ggtitle("Daily price chart for our stock portfolio")
+
+```
+This is actually not the result we expected. Because these stocks have a huge price spread, it is difficult for us to judge their trend from the price chart.
+We can overcome this problem by plotting the stocks in the respective y scales.
+```{r}
+ggplot(data = portfolio)+
+  (mapping = (aes(x = date, y = adjusted))) +
+  geom_line() +
+  facet_wrap(~symbol,scales="free_y") +  
+  labs(x = "Date", y = "Price") +
+  ggtitle("Daily price chart for our stock portfolio")
+
+```
+
+
+### Calculate daily and monthly returns for each stock and visualize them
+Once we have a general idea of the price trend, we need to know the daily return of each stock:
+```{r,include=FALSE}
+portfolio.daily.ret <- tq_transmute(data=group_by(portfolio,symbol),select = adjusted,mutate_fun = periodReturn,period = 'daily',col_rename = 'returns')
+```
+Now we can visualize the daily return of our portfolio:
+```{r}
+ggplot(portfolio.daily.ret)+
+  (mapping = (aes(x = date, y = returns))) +
+  geom_line() +
+  facet_wrap(~symbol,scales="free_y") +  
+  labs(x = "Date", y = "Price") +
+  geom_hline(yintercept = 0)+
+  ggtitle("Daily return for our stock portfolio")
+
+```
+In the same way, we can do it for monthly returns:
+```{r,include=FALSE}
+portfolio.monthly.ret <- tq_transmute(data=group_by(portfolio,symbol),select = adjusted,mutate_fun = periodReturn,period = 'monthly',col_rename = 'returns')
+```
+```{r}
+ggplot(portfolio.monthly.ret)+
+  (mapping = (aes(x = date, y = returns))) +
+  geom_line() +
+  facet_wrap(~symbol,scales="free_y") +  
+  labs(x = "Date", y = "Price") +
+  geom_hline(yintercept = 0)+
+  ggtitle("Monthly return for our stock portfolio")
+
+```
+We can see that Square and Tesla are the most volatile in the portfolio. This result is not very surprising to me because both Sqaure and Tesla are high growth companies and their scales and business models are improving day by day, so the stock price will be more volatile. We can also see that in August 2020, Tesla stock returned almost 75% in a single month, due to the stock split announced by Tesla in August 2020, which made a lot of money (or retail investors) more willing to buy Tesla stock.
+
+### Calculate the cumulative return for each stock and visualize them.
+```{r}
+for (i in 1:length(portfolio.monthly.ret)){
+  if(portfolio.monthly.ret$date[i]=="2016-01-29"){
+    portfolio.monthly.ret$returns[i]=0
+  }
+}
+
+portfolio.cr.monthly <- mutate(group_by(portfolio.monthly.ret,symbol),cumulative.returns = cumprod(1+returns)-1)
+ggplot(portfolio.cr.monthly)+
+  (mapping = (aes(x = date, y = cumulative.returns,color=symbol)))+
+  geom_line()+
+  scale_y_continuous(labels = scales::percent)+
+  labs(x="Date",y="Cumulative monthly return")+
+  ggtitle("Cumulative monthly returns for portfolio from 2016 to 2021")+
+  theme(plot.title = element_text(size=11))
+```
+This result is in line with expectations, because as companies with high growth rate, Square and Tesla's market cap will grow faster than other traditional giant companies and the market itself will be willing to pay a premium to buy the emerging companies shares. However, the share prices of Sqaure and Tesla are very volatile, so many investors do not manage to hold them for a long time. Especially for Tesla, holding Tesla's stock will not help you to gain a lot before 2020. Many investors might bought Tesla's stock before 2020, but it has a very high probability that those investors gave up continuing to hold Tesla's stock before the "dawn" because they can't gain high income for a significant portion of their holding time.
+
+### Calculate the mean and variance of daily and monthly return for each stock and visualize them.
+First we can calculate the mean and variance of daily return for each stock
+```{r}
+summarise(group_by(portfolio.daily.ret,symbol),mean = mean(returns),sd = sd(returns))
+```
+```{r}
+summarise(group_by(portfolio.monthly.ret,symbol),mean = mean(returns),sd = sd(returns))
+```
+```{r}
+portfolio.monthly.ret.byyear<- 
+  mutate(portfolio.monthly.ret,year=year(date))%>%
+  group_by(symbol,year)%>%
+  summarise(mean=mean(returns),sd=sd(returns))
+```
+
+```{r}
+ggplot(portfolio.monthly.ret.byyear)+
+  (mapping = (aes(x = year, y = mean, fill=symbol)))+
+  geom_bar(stat="identity",position="dodge")+
+  scale_y_continuous(labels = scales::percent)+
+  scale_x_continuous(breaks=seq(2016,2021,1))+
+  labs(x="Year",y="Mean returns by years")+
+  ggtitle("Monthly Mean Return for Portfolio in Each Year")
+```
+```{r}
+ggplot(portfolio.monthly.ret.byyear)+
+  (mapping = (aes(x = year, y = sd, fill=symbol)))+
+  geom_bar(stat="identity",position="dodge")+
+  scale_y_continuous(labels = scales::percent)+
+  scale_x_continuous(breaks=seq(2016,2021,1))+
+  labs(x="Year",y="SD of Mean returns by years")+
+  ggtitle("SD of Monthly Mean Return for Portfolio in Each Year")
+```
+
