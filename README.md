@@ -60,20 +60,18 @@ library(QBS181momentum)
 ## installation
 You can use the "install.packages()" to install all of the packages above except library(QBS181momentum) and library(SIT) to install the library. Just add the library name into the ().
 
-For the library(STI). Install Systematic Investor Toolbox (SIT) package. From following URL : 
-
-github.com/systematicinvestor/SIT
+For the library(STI). Install Systematic Investor Toolbox (SIT) package. From following URL : 'github.com/systematicinvestor/SIT'
 
 
-please first install SIT.date, use the folliowing code
+please first install SIT.date, use the folliowing code:
 
-devtools::install_github('systematicinvestor/SIT.date')
+>devtools::install_github('systematicinvestor/SIT.date')
  
-library(curl)
+>library(curl)
 
-curl_download('https://github.com/systematicinvestor/SIT/raw/master/SIT.tar.gz', 'sit',mode = 'wb',quiet=T)
+>curl_download('https://github.com/systematicinvestor/SIT/raw/master/SIT.tar.gz', 'sit',mode = 'wb',quiet=T)
 
-install.packages('sit', repos = NULL, type='source')
+>install.packages('sit', repos = NULL, type='source')
 ## contact
 ruce.shao.gr@dartmouth.edu
 
