@@ -1,0 +1,11 @@
+Package: QBS181momentum
+Type: Package
+Title: What the Package Does (Title Case)
+Version: 0.1.0
+Author: Zhang,Shao,Wang,Liang
+Maintainer: The package maintainer <yourself@somewhere.net>
+Description: This function allows you to calculate the stocks returns based on 30/60/120 days momentum strategies, and will plot the return curves. You need to library('SIT') first.
+    Use four spaces when indenting paragraphs within the Description.
+License: What license is it under?
+Encoding: UTF-8
+LazyData: true
