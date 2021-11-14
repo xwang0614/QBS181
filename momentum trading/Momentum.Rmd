@@ -1,0 +1,151 @@
+---
+title: "Momentum"
+author: "Xinyu Wang"
+date: "11/9/2021"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Model for chasing after go up kill drop
+
+### Getting the data of stock price
+
+In addition to holding stocks with good prospects for a long time,we could make some trades to obtain higher returns. As we know, there is a method of trading in the stock market, which is buying the winners and selling the losers, and we call it momentum trading. The advantage of this trading strategy is that we are well positioned to capture the market's uptrend and optimize our returns. This part, we use will build models for this trade.
+
+First, we need to download the Install Systematic Investor Toolbox (SIT) package from Github, since we will call some functions in this package.
+
+```{r}
+# Required to install Systematic Investor Toolbox(SIT) package
+
+# Install Systematic Investor Toolbox (SIT) package
+# github.com/systematicinvestor/SIT
+
+# Please first install SIT.date
+devtools::install_github('systematicinvestor/SIT.date')
+
+library(curl)
+curl_download('https://github.com/systematicinvestor/SIT/raw/master/SIT.tar.gz', 'sit',mode = 'wb',quiet=T)
+install.packages('sit', repos = NULL, type='source')
+```
+
+Similar to Markowitz model, we first get stock price data from yahoo finance and set the date from Jan. 1st, 2016 to Oct. 1st, 2021.
+
+```{r}
+library(SIT)
+# Get the stock price data from yahoo finance from 2016-01-01 to 2021-10-01
+tickers = 'AAPL,GOOGL,NFLX,SQ,TSLA'
+data = new.env()
+getSymbols.extra(tickers, src = 'yahoo', from = '2016-01-01', to = '2021-10-01', env = data, set.symbolnames = T, auto.assign = T)
+```
+
+### Adjust stock prices for splits and dividends
+
+Before setting the model, we first need to adjust open, close, high, low prices of stocks in order to do splits and dividends, then we set back test preparation.
+
+```{r}
+# Adjust open, high, low, close prices for splits and dividends and setting back test preparation
+for(i in data$symbolnames) data[[i]] = adjustOHLC(data[[i]], use.Adjusted=T)
+bt.prep(data, align='keep.all', dates='2016::', fill.gaps=T)
+```
+
+Then we also need to set up our rebalance frequency for momentum trading. Here the strategy rebalance portfolio for each month. 
+
+```{r}
+# Setting up the rebalance frequency
+prices = data$prices
+n = ncol(prices)
+nperiods = nrow(prices)
+frequency = 'months'
+period.ends = endpoints(prices, frequency)
+period.ends1 = period.ends - 1 # lag by one day
+period.ends1 = period.ends1[period.ends1 > 0]
+period.ends0 = period.ends1 + 1
+```
+
+Now, we start to set up a model.
+
+```{r}
+# Setting up our model
+models = list()
+```
+
+First, we set the commission for stocks trading. 
+
+```{r}
+# Setting the commission for trading stocks
+commission = list(cps = 0.01, fixed = 10.0, percentage = 0.0)
+```
+
+### 30 days momemtum
+
+Next, we calculate the momentum of 30 days and build the part of the model for 30 days momentum model as "mom30". 
+
+We use mlag() function to shifts prices in a matrix by a given lag 30 days, which means we use prices 30 days ago, then we get return by using prices divide lag. Next, we use iif() function which is a faster version of ifelse function to get the position score. For the third step, we add a new column "weight" to data which represents our weight of investment on stock. It is worth noting that the weights of our trading in stocks are only 0 and 1 (means all amount). So we use ntop() function to select the highest position score to get the most worth trading stock and then fill in its weight. The final step is to use bt.run.share() function from SIT package to build the list based 30 days momentum.
+
+```{r}
+# Trade based on 30 days momentum
+return = prices / mlag(prices,30) - 1
+position.score = iif(return < 0, NA, return)
+data$weight[] = NA
+data$weight[period.ends0,] = ntop(position.score[period.ends1,], 1)
+models$mom30 = bt.run.share(data, clean.signal=F, commission = commission, trade.summary=T, silent=T)
+```
+
+### 30/60 days momemtum
+
+For more accurate modeling, we choose to add the momentum of 30 days and 60 days as part of the trade model 30/60 and we set it as "mom60".Repeat the same steps as the "mom30" model.
+
+```{r}
+# Trade based on 30/60 days momentum
+return = prices / mlag(prices,30) - 1 + prices / mlag(prices,60) - 1
+position.score = iif(return < 0, NA, return)
+data$weight[] = NA
+data$weight[period.ends0,] = ntop(position.score[period.ends1,], 1)
+models$mom60 = bt.run.share(data, clean.signal=F, commission = commission, trade.summary=T, silent=T)
+```
+
+### 30/60/120 days momemtum
+
+For the last part of the model, we set it as "mom120" by adding 30 days momentum, 60 days momentum and 120 days momentum together. And repeat the same steps as above.
+
+```{r}
+# Trade based on 30/60/120 days momentum
+return = prices / mlag(prices,30) - 1 + prices / mlag(prices,60) - 1 + prices / mlag(prices,120) - 1
+position.score = iif(return < 0, NA, return)
+data$weight[] = NA
+data$weight[period.ends0,] = ntop(position.score[period.ends1,], 1)
+models$mom120 = bt.run.share(data, clean.signal=F, commission = commission, trade.summary=T, silent=T)
+```
+
+### Comparison of trading strategies based on different momentum
+
+To compare trading strategy based on three different momentum, we use plotbt() function from SIT package to build a plot of cumulative return of back test and find that "mom120" have the highest cumulative return.
+
+```{r}
+# Plot the cumulative return for each strategy
+plotbt(models, plotX = T, log = 'y', LeftMargin = 3, main = "Trading Strategy Based On Different Momentum ")
+mtext('Cumulative Return', side = 2, line = 1)
+```
+
+### Strategy performance
+
+In addition, we display the information and performance for each strategy including Period, Cagr(compound annual growth rate), Sharpe(Sharpe ratio), DVR(Sharpe ratio times R squared), R2(R squared), Volatility(the rate at which the price of a stock increases or decreases over a particular period), MaxDD(maximum drawdown), Exposure(the risk inherent in an investment), Win.Percent(the number of trades won out of total trades), Avg.Trade(average trading price), Profit.Factor(the gross profit divided by the gross loss (including commissions) for the entire trading period) and Num.Trades(number of trading).
+
+```{r}
+# Print the summary of performance for each strategy
+print(plotbt.strategy.sidebyside(models, make.plot=F, return.table=T, perfromance.fn=engineering.returns.kpi))
+```
+
+### Trading information table
+
+Now, we display a table including the last 20 trades based on the "mom120" part of model.
+
+```{r}
+print(last.trades(models$mom120, make.plot=F, return.table=T))
+```
+
+Overall, it seems that our trading strategy can help us gain excess returns when the overall market is trending upward, but can leave us with more losses when the overall market is trending downward. The strategy's parameters and factors need to be adjusted for different portfolios, depending on the properties of the assets that make up the portfolio. When trading with this strategy, investors need to have a clear understanding of the overall market trend and set up a good stop-loss measures.
+

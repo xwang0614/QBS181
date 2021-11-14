@@ -43,13 +43,13 @@ models$mom30 = bt.run.share(data, clean.signal=F, commission = commission, trade
 
 
 
-return = prices / mlag(prices,60) - 1 
+return = prices / mlag(prices,30) - 1 + prices / mlag(prices,60) - 1 
 position.score = iif(return < 0, NA, return)
 data$weight[] = NA
 data$weight[period.ends0,] = ntop(position.score[period.ends1,], 1)
 models$mom60 = bt.run.share(data, clean.signal=F, commission = commission, trade.summary=T, silent=T)
 
-return = prices / mlag(prices,120) - 1 
+return = prices / mlag(prices,30) - 1 + prices / mlag(prices,60) - 1 + prices / mlag(prices,120) - 1 
 position.score = iif(return < 0, NA, return)
 data$weight[] = NA
 data$weight[period.ends0,] = ntop(position.score[period.ends1,], 1)
